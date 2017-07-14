@@ -11,9 +11,9 @@
 # stringr: provides utilities for string manipulation
 
 # Constant for path to local ncar statmos code location
-PATH_CODE <- '/storage/home/jwo118/workspace/ncar_statmos'
+PATH_CODE <- '[PLACE PATH TO CODE DIRECTORY HERE]'
 # Constant for path to local netcdf data file
-FPATH_DATA <- '/storage/home/jwo118/scratch/topowx-prcp/station_data/prcp_homog_19480101_20151231.nc'
+FPATH_DATA <- '[PLACE FILE PATH TO NETCDF FILE HERE]'
 
 # Set timezone for environment to UTC
 Sys.setenv(TZ="UTC")
