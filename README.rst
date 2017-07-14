@@ -26,7 +26,7 @@ Observations are stored as 2D space-wide matrices where each row is a day in tim
 each column is a station. Missing values are represented as nan. Examples for reading
 the netcdf files are provided:
 
-* `R example <https://github.com/jaredwo/ncar_statmos/blob/master/scripts/r/example_load_obs.py>`_
+* `R example <https://github.com/jaredwo/ncar_statmos/blob/master/scripts/r/example_load_obs.R>`_
 * `Python example <https://github.com/jaredwo/ncar_statmos/blob/master/scripts/python/example_load_obs.py>`_
 
 Background reading
