@@ -15,6 +15,7 @@ START_TIME = '2006-01-01'
 END_TIME <- '2015-12-31'
 # Constant for output rdata file
 FPATH_OUT <- '/storage/home/jwo118/scratch/ncar_statmos/data/prcp_stns_cheasapeake_20060101_20151231.rdata'
+N_NN <- 2
 
 # Set timezone for environment to UTC
 Sys.setenv(TZ="UTC")
@@ -42,7 +43,6 @@ times <- obsnc_time(ds)
 
 # Load precipitation time series for stations
 xts_prcp <- obsnc_obs(ds, 'prcp', stns, times, start_end=c(START_TIME, END_TIME), stnids=stns$station_id)
-yday <- .indexyday(ts_prcp) + 1
 df_prcp <- as.data.frame(xts_prcp)
 df_prcp$time <- index(xts_prcp)
 df_prcp$yday <- .indexyday(xts_prcp) + 1
@@ -62,5 +62,92 @@ df_prcp$wet <- df_prcp$prcp > 0
 df_prcp$yday_sin <- sin((2*pi*df_prcp$yday)/365.25)
 df_prcp$yday_cos <- cos((2*pi*df_prcp$yday)/365.25)
 
+# Get rid of stations that didn't have any observations for period specified
+mask_has_obs <- stns$station_id %in% unique(as.character(df_prcp$station_id))
+stns <- stns[mask_has_obs,]
+df_stns <- df_stns[mask_has_obs,]
+
+# Add N nearest neighbor covariates
+for (i in seq(N_NN)) {
+	df_prcp[sprintf('dlon_nn%.2d', i)] <- rep(NA, nrow(df_prcp))
+	df_prcp[sprintf('dlat_nn%.2d', i)] <- rep(NA, nrow(df_prcp))
+	df_prcp[sprintf('delev_nn%.2d', i)] <- rep(NA, nrow(df_prcp))
+	df_prcp[sprintf('prcp_nn%.2d', i)] <- rep(NA, nrow(df_prcp))
+}
+
+# Distance Matrix
+d <- spDists(stns,longlat=TRUE)
+row.names(d) <- stns$station_id
+colnames(d) <- stns$station_id
+
+for (i in seq(nrow(stns))) {
+	
+	stnid <- stns$station_id[i]
+	print(sprintf("%s: station %d of %d",stnid,i,nrow(stns)))
+	
+	d_i <- d[i,-i]
+	ngh_ids <- names(d_i[order(d_i)])
+	
+	j_rows <- which(df_prcp$station_id==stnid)
+	j_dates <- df_prcp[j_rows,'time']
+	
+	ngh_avail <- matrix(TRUE,nrow=length(j_rows),ncol=length(ngh_ids),dimnames=list(NULL,ngh_ids))
+	
+	for (n in seq(1:N_NN)) {
+
+		for (ngh_id in ngh_ids) {
+			
+			prcp_ngh <- as.numeric(xts_prcp[j_dates, ngh_id])
+			mask_use <- is.finite(prcp_ngh) & ngh_avail[,ngh_id] & (!is.finite(df_prcp[j_rows,sprintf('prcp_nn%.2d', n)]))
+			
+			if (any(mask_use)) {
+				
+				df_prcp[j_rows[mask_use],sprintf('dlon_nn%.2d', n)] <- df_stns[stnid,'longitude'] - df_stns[ngh_id,'longitude']
+				df_prcp[j_rows[mask_use],sprintf('dlat_nn%.2d', n)] <- df_stns[stnid,'latitude'] - df_stns[ngh_id,'latitude']
+				df_prcp[j_rows[mask_use],sprintf('delev_nn%.2d', n)] <- df_stns[stnid,'elevation'] - df_stns[ngh_id,'elevation']
+				df_prcp[j_rows[mask_use],sprintf('prcp_nn%.2d', n)] <- prcp_ngh[mask_use]
+				
+				ngh_avail[mask_use,ngh_id] <- FALSE
+				
+			}
+			
+			if (all(is.finite(df_prcp[j_rows,sprintf('prcp_nn%.2d', n)]))) break
+			
+			
+		}
+		
+	}
+
+}
+
 #Output dataframe as rdata file
 save(df_prcp,file=FPATH_OUT)
+
+# TODO: Seasonal cycle of precipitation
+xts_dmean <- xts(rowMeans(xts_prcp, na.rm=TRUE),index(xts_prcp))
+iyday <- .indexyday(xts_dmean) + 1
+
+yd_mean <- rep(NA, 365)
+for (i in seq(1,365)) {
+
+	xmin <- i-45
+	xmax <- i+45
+	
+	if (xmin < 1) {
+		
+		mask_xmin <- iyday >= (365 + xmin)
+		mask_xmax <- iyday <= xmax
+		yd_mean[i] <- mean(xts_dmean[mask_xmin | mask_xmax])
+		
+	} else if (xmax > 365) {
+		
+		mask_xmin <- iyday >= xmin
+		mask_xmax <- iyday <= (xmax-365)
+		yd_mean[i] <- mean(xts_dmean[mask_xmin | mask_xmax])
+		
+	} else {
+		
+		yd_mean[i] <- mean(xts_dmean[(iyday >= xmin & iyday <= xmax)])
+	}
+	
+}
