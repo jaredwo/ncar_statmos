@@ -26,7 +26,7 @@ mask_sea <- dslndm[] == 0
 rm(dslndm)
 gc()
 
-# Cluster setups
+# Cluster setup
 
 fpath_log <- FPATH_LOGFILE
 writeLines(c(""),fpath_log)
