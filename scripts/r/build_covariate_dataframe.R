@@ -11,10 +11,10 @@ FPATH_DATA <- '/storage/home/jwo118/scratch/ncar_statmos/data/prcp_ghcnd_midatla
 # Constant for path to Chesapeake Bay watershed shapefile
 PATH_CBAY <- '/storage/home/jwo118/scratch/topowx-prcp/vector/'
 # Start/end date constants
-START_TIME = '2006-01-01'
+START_TIME = '2011-01-01'
 END_TIME <- '2015-12-31'
 # Constant for output rdata file
-FPATH_OUT <- '/storage/home/jwo118/scratch/ncar_statmos/data/prcp_stns_cheasapeake_20060101_20151231.rdata'
+FPATH_OUT <- '/storage/home/jwo118/scratch/ncar_statmos/data/prcp_30stns_cheasapeake_20110101_20151231.rdata'
 N_NN <- 2
 
 # Set timezone for environment to UTC
@@ -43,6 +43,11 @@ times <- obsnc_time(ds)
 
 # Load precipitation time series for stations
 xts_prcp <- obsnc_obs(ds, 'prcp', stns, times, start_end=c(START_TIME, END_TIME), stnids=stns$station_id)
+
+# Only keep 30 stations with longest por
+#stnids_keep <- colnames(xts_prcp)[order(colSums(is.finite(xts_prcp)), decreasing=TRUE)[1:30]]
+#xts_prcp <- xts_prcp[,stnids_keep]
+
 df_prcp <- as.data.frame(xts_prcp)
 df_prcp$time <- index(xts_prcp)
 df_prcp$yday <- .indexyday(xts_prcp) + 1
